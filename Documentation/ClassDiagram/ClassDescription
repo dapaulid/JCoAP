@@ -1,0 +1,87 @@
+********************************************************
+*                                                      *
+*       Document: Class Descriptions                   *
+*       Authors: Daniel Pauli & Dominique Im Obersteg  *
+*       Version: 0.1                                   *
+*       Date: 14.03.2011                               *
+*                                                      *
+*       Description: This file contains brief          *
+*                    descriptions of all classes and   *
+*                    interfaces                        *
+*                                                      *
+********************************************************
+
+
+///////////////////////////////////////////////////////
+//   Classes                                        //
+/////////////////////////////////////////////////////
+
+
+[CoAPMessage]
+
+Class CoAPMessage provides the functionality to...
+
+
+[Request]
+
+Class Request provides the functionality to...
+
+
+[Response]
+
+Class Response provides the functionality to...
+
+
+[Option]
+
+Class Option provides the functionality to...
+
+
+[MessageQueue]
+
+Class MessageQueue provides the functionality to...
+
+
+[CoAPController]
+
+Class CoAPController provides the functionality to...
+
+
+[DatagramGenerator]
+
+Class DatagramGenerator provides the functionality to...
+
+
+[Datagram]
+
+Class Datagram provides the functionality to...
+
+
+[DatagramParser]
+
+Class DatagramParser provides the functionality to...
+
+
+[Communicator]
+
+Class Communicator provides the functionality to...
+
+
+[CoAPUri]
+
+Class CoAPUri provides the functionality to...
+
+
+///////////////////////////////////////////////////////
+//   Interfaces                                     //
+/////////////////////////////////////////////////////
+
+[ICoAPSender]
+
+Interface ICoAPSender provides the definitions to...
+
+
+[ICoAPReceiver]
+
+Interface ICoAPReceiver provides the definitions to...
+
