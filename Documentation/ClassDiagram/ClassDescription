@@ -19,57 +19,85 @@
 
 [CoAPMessage]
 
-Class CoAPMessage provides the functionality to...
+Class CoAPMessage provides the functionality to
+encapsulate a message as described in [1]. A
+CoAPMessage can contain several Options.
 
 
 [Request]
 
-Class Request provides the functionality to...
+Class Request provides the functionality which
+is used by request messages. A request refers
+to the corresponding response.
 
 
 [Response]
 
-Class Response provides the functionality to...
+Class Request provides the functionality which
+is used by response messages. A response refers
+to the corresponding request.
 
 
 [Option]
 
-Class Option provides the functionality to...
+Class Option provides the functionality to define
+the options as described in [1].
 
 
 [MessageQueue]
 
-Class MessageQueue provides the functionality to...
+Class MessageQueue provides the functionality to
+store incoming CoAPMessages and perform the matching
+between request and response messages.
 
 
 [CoAPController]
 
-Class CoAPController provides the functionality to...
+Class CoAPController provides the functionality for
+the main communication logic.
 
 
 [DatagramGenerator]
 
-Class DatagramGenerator provides the functionality to...
+Class DatagramGenerator provides the functionality to
+generate datagrams from outgoing CoAPMessages.
 
 
 [Datagram]
 
-Class Datagram provides the functionality to...
+Class Datagram provides the functionality to represent
+CoAPMessages as raw binary data (datagram).
 
 
 [DatagramParser]
 
-Class DatagramParser provides the functionality to...
+Class DatagramParser provides the functionality to convert
+datagrams into CoAPMessages.
 
 
 [Communicator]
 
-Class Communicator provides the functionality to...
+Class Communicator provides the functionality to send and
+receive UDP datagrams.
 
 
 [CoAPUri]
 
-Class CoAPUri provides the functionality to...
+Class CoAPUri provides the functionality to represent
+and parse CoAP URIs.
+
+
+[CoAPEndpoint]
+
+Class CoAPEndpoint provides the functionality to represent
+a remote sensor node as an object which refers to one or
+more CoAPResources using resource discovery.
+
+
+[CoAPResource]
+
+Class CoAPResource provides the functionality to represent
+a resource on an endpoint returning sensor data.
 
 
 ///////////////////////////////////////////////////////
@@ -78,10 +106,20 @@ Class CoAPUri provides the functionality to...
 
 [ICoAPSender]
 
-Interface ICoAPSender provides the definitions to...
+Interface ICoAPSender provides the definitions to perform
+perform operations on CoAPEndpoints.
 
 
 [ICoAPReceiver]
 
-Interface ICoAPReceiver provides the definitions to...
+Interface ICoAPReceiver provides the definitions to receive
+information from CoAPEndpoints (and CoAPResources).
+
+
+///////////////////////////////////////////////////////
+//   External Resources                             //
+/////////////////////////////////////////////////////
+
+[1] http://tools.ietf.org/html/draft-ietf-core-coap-04
+
 
