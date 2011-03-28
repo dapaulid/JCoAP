@@ -1,0 +1,123 @@
+********************************************************
+*                                                      *
+*       Document: Interface Description                *
+*       Authors: Daniel Pauli & Dominique Im Obersteg  *
+*       Version: 0.1                                   *
+*       Date: 28.03.2011                               *
+*                                                      *
+*       Description: This file contains brief          *
+*                    descriptions of the interfaces    *
+*                    and some basic use cases          *
+*                                                      *
+********************************************************
+
+///////////////////////////////////////////////////////
+//   Interfaces                                     //
+/////////////////////////////////////////////////////
+
+[ICoapEndpoint]
+
+This interface describes the functionality of CoAP endpoints
+and is implemented by the class CoapEndpoint. It offers methods
+to perform operations and to discover resources on CoAP endpoints.
+Furthermore, it allows to retrieve references to resources by
+the resource's name.
+
+
+[ICoapResource]
+
+This interface describes the functionality of a CoAP resource and
+is implemented by all user defined resources. It offers the methods
+GET, PUT, POST and DELETE.
+
+
+[IEndpointObserver]
+
+This interface describes the functionality to receive notification
+from a CoAP endpoint e.g. the completion of an ongoing operation or
+the discovery of new resources.
+
+
+///////////////////////////////////////////////////////
+//   Classes                                        //
+/////////////////////////////////////////////////////
+
+[Remote Resource]
+
+This class defines the functionality of a CoAP resource and is basically
+a skeleton to access CoAP features of a remote machine similar to local
+calls.
+
+[MessageCommunicator]
+
+This class defines the functionality to send and receive messages using
+the CoAP protocol.
+
+
+[RemoteEndpoint]
+
+This class defines the functionality of a remote CoAP endpoint and is
+a skeleton to access the CoAP functionality of a remote CoAP endpoint
+similar to local calls
+
+
+[LocalEndpoint]
+
+This class defines the functionality of a node, having a set of resources.
+It provides methods to add or remove resources.
+
+
+[CoapEndpoint]
+
+This class defines the functionality of a CoAP endpoint and is used to
+implement basic features.
+
+
+///////////////////////////////////////////////////////
+//   Use cases                                      //
+/////////////////////////////////////////////////////
+
+[Create Server]
+
+First, the resources to be provided have to be defined:
+	public class myResource implements ICoapResource {
+		public performGet() {...}
+                ...
+	}
+
+Then, instantiate a new local endpoint listening on port e.g. 61616:
+	myServer = new LocalEndpoint(61616);
+
+Finally, register resources to endpoint:
+	myServer.addResource(new myResource());
+
+
+
+
+[Create Client]
+
+First, create a client class which implements IEndpointObserver:
+	public class MyClient implements IEndpointObserver {
+		public resourcesDiscovered() {...}
+		...	
+	}
+
+Instatiate the client class:
+	myClient = new MyClient ();
+
+Then, retrieve remote server skeleton:
+	myServer = new RemoteEndpoint("coap://localhost:61616");
+
+The client then has to subscribe to receive notifications from the
+server:
+	myServer.subscribe(myClient);
+	
+Further, disover available resources:
+	myServer.discoverResources();
+
+Then, perform some operations on the server, either direct:
+	myServer.performOperation(POST, "coap://localhost:61616/myResource", "HelloWorld");
+or using a reference to an existing resource:
+	myResource = myServer.getResource("myResource");
+	myResource.performPOST("Hello World");
+
