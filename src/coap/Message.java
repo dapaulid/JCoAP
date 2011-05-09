@@ -1,13 +1,14 @@
 package coap;
 
+import java.io.PrintStream;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-//import option.Option;
 
 /*
  * This class describes the functionality of the CoAP messages
@@ -64,6 +65,31 @@ public class Message {
 		= (1 << OPTIONLENGTH_BASE_BITS) - 2;
 	
 	// Static Functions ////////////////////////////////////////////////////////
+	
+	public Message newReply(boolean ack) {
+
+		Message reply = new Message();
+		
+		// set message type
+		if (type == messageType.Confirmable) {
+			reply.type = ack ? 
+				messageType.Acknowledgement : messageType.Reset;
+		} else {
+			reply.type = messageType.Non_Confirmable;
+		}
+		
+		// echo the message ID
+		reply.messageID = this.messageID;
+		
+		// set the receiver URI of the reply to the sender of this message
+		reply.uri = this.uri;
+		
+		// create an empty reply by default
+		reply.code = CodeRegistry.EMPTY_MESSAGE;
+		
+		return reply;
+		
+	}
 	
 	public static Message newAcknowledgement(Message msg) {
 		
@@ -141,6 +167,17 @@ public class Message {
 	 */
 	public Message () {
 	}
+
+	/*
+	 * Constructor for a new CoAP message
+	 * 
+	 * @param type The type of the CoAP message
+	 * @param code The code of the CoAP message (See class CodeRegistry)
+	 */
+	public Message(messageType type, int code) {
+		this.type = type;
+		this.code = code;
+	}	
 	
 	/*
 	 * Constructor for a new CoAP message
@@ -150,16 +187,10 @@ public class Message {
 	 */
 	public Message(URI uri, messageType type, int code, int id, byte[] payload) {
 		this.uri = uri;
+		this.type = type;
+		this.code = code;
+		this.messageID = id;
 		this.payload = payload;
-	}
-	
-	/*
-	 * Constructor for a new CoAP message
-	 * 
-	 * @param byteArray A byte array containing an encoded CoAP message
-	 */
-	public Message(byte[] byteArray) {
-		fromByteArray(byteArray);
 	}
 	
 	// Serialization ///////////////////////////////////////////////////////////
@@ -289,25 +320,44 @@ public class Message {
 	 * @param byteArray A byte array containing the CoAP encoding of the message
 	 * 
 	 */
-	public void fromByteArray(byte[] byteArray) {
+	public static Message fromByteArray(byte[] byteArray) {
 
 		//Initialize DatagramReader
 		DatagramReader datagram = new DatagramReader(byteArray);
 		
 		//Read current version
-		version = datagram.read(VERSION_BITS);
+		int version = datagram.read(VERSION_BITS);
 		
 		//Read current type
-		type = getTypeByID(datagram.read(TYPE_BITS));
+		messageType type = getTypeByID(datagram.read(TYPE_BITS));
 		
 		//Read number of options
 		int optionCount = datagram.read(OPTIONCOUNT_BITS);
 		
 		//Read code
-		code = datagram.read(CODE_BITS);
+		int code = datagram.read(CODE_BITS);
+		if (!CodeRegistry.isValid(code)) {
+			System.out.printf("ERROR: Invalid message code: %d\n", code);
+			return null;
+		}
+
+		// create new message with subtype according to code number
+		Message msg;
+		try {
+			msg = CodeRegistry.getMessageClass(code).newInstance();
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+			return null;
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+			return null;
+		}
+		msg.version = version;
+		msg.type = type;
+		msg.code = code;
 		
 		//Read message ID
-		messageID = datagram.read(ID_BITS);
+		msg.messageID = datagram.read(ID_BITS);
 		
 		//Current option nr initialization
 		int currentOption = 0;
@@ -346,22 +396,15 @@ public class Message {
 				Option opt = new Option (datagram.readBytes(length), currentOption);
 				
 				//Add option to message
-				addOption(opt);
+				msg.addOption(opt);
 			}
+			
 		}
 
-		
-		
 		//Get payload
-		payload = datagram.readBytesLeft();
+		msg.payload = datagram.readBytesLeft();
 		
-		/*if (((datagramTailBitSize % 8) == 0) && (datagramTailBitSize > 0)) {
-			int datagramTailByteSize = datagramTailBitSize / 8;
-			payload = datagram.readBytes(datagramTailByteSize);
-		} else {
-			//TODO: Error handling
-			System.out.println("ALIGNMENT ERROR: Bit Size = " + datagramTailBitSize);
-		}*/
+		return msg;
 	}
 	
 	
@@ -373,8 +416,62 @@ public class Message {
 	 * @param uri The URI to which the current message URI should be set to
 	 */
 	public void setURI(URI uri) {
-		// TODO include URI components path, query etc. into message options
+		
+		// include Uri Options as specified in 
+		// draft-ietf-core-coap-05, section 6.3
+		
+		// TODO unclear when/how to include Uri-Host and Uri-Port options
+		
+		if (uri != null) {
+			
+			// set Uri-Path options
+			String path = uri.getPath();
+			if (path != null && path.length() > 1) {
+				
+				// TODO This code is used for compatibility with draft 3
+				// which doesn't allow several Uri-Path options, as in draft 5.
+				// This should be revised.
+				setOption(new Option(path.substring(1), OptionNumberRegistry.URI_PATH));
+				/*
+				List<Option> uriPaths = new ArrayList<Option>();
+				for (String segment : path.split("/")) {
+					
+					// handle non-empty segments only
+					if (!segment.isEmpty()) {
+						
+						// create a new Uri-Path option from the segment
+						Option uriPath = new Option(segment, OptionNumberRegistry.URI_PATH);
+					
+						// add the option to the list
+						uriPaths.add(uriPath);
+					}
+				}
+				
+				setOptions(OptionNumberRegistry.URI_PATH, uriPaths);*/
+
+			}
+			
+			// set Uri-Query options
+			String query = uri.getRawQuery(); // leave percent-encodings intact
+			if (query != null) {
+				
+				setOption(new Option(query, OptionNumberRegistry.URI_QUERY));
+			}
+		}
+		
+		// finally, set new Uri
 		this.uri = uri;
+	}
+	
+	public boolean setURI(String uri) {
+		try {
+			setURI(new URI(uri));
+			return true;
+		} catch (URISyntaxException e) {
+			System.out.printf("[%s] Failed to set URI: %s\n",
+				getClass().getName(), e.getMessage());
+			return false;
+		}
 	}
 	
 	/*
@@ -482,11 +579,12 @@ public class Message {
 	 */
 	public void addOption(Option opt) {
 		
-		List<Option> list = options.get(opt.getOptionNumber());
+		List<Option> list = optionMap.get(opt.getOptionNumber());
 		if (list == null) {
 			list = new ArrayList<Option>();
+			optionMap.put(opt.getOptionNumber(), list);
 		}
-		options.put(opt.getOptionNumber(), list);
+		list.add(opt);
 	}	
 	
 	/*
@@ -496,7 +594,7 @@ public class Message {
 	 * @return A list containing the options with the given number
 	 */
 	public List<Option> getOptions(int optionNumber) {
-		return options.get(optionNumber);
+		return optionMap.get(optionNumber);
 	}
 
 	/*
@@ -507,7 +605,7 @@ public class Message {
 	 */
 	public void setOptions(int optionNumber, List<Option> opt) {
 		// TODO Check if all options are consistent with optionNumber
-		options.put(optionNumber, opt);
+		optionMap.put(optionNumber, opt);
 	}
 	
 	/*
@@ -516,24 +614,23 @@ public class Message {
 	 * @param optionNumber The option number
 	 * @return The first option with the specified number, or null
 	 */
-	public Option getOption(int optionNumber) {
+	public Option getFirstOption(int optionNumber) {
 		
 		List<Option> list = getOptions(optionNumber);
-		return !list.isEmpty() ? list.get(0) : null;
+		return list != null && !list.isEmpty() ? list.get(0) : null;
 	}
 	
 	/*
-	 * Sets the first option with the specified option number
+	 * Sets the option with the specified option number
 	 * 
 	 * @param opt The option to set
 	 */
 	public void setOption(Option opt) {
 
-		List<Option> list = getOptions(opt.getOptionNumber());
-		if (list.isEmpty()) {
-			addOption(opt);
-		} else {
-			list.set(0, opt);
+		if (opt != null) {
+			List<Option> options = new ArrayList<Option>();
+			options.add(opt);
+			setOptions(opt.getOptionNumber(), options);
 		}
 	}
 
@@ -546,7 +643,7 @@ public class Message {
 
 		List<Option> list = new ArrayList<Option>();
 		
-		for (List<Option> option : options.values()) {
+		for (List<Option> option : optionMap.values()) {
 			list.addAll(option);
 		}
 		
@@ -563,6 +660,110 @@ public class Message {
 	}
 	
 	/*
+	 * Appends data to this message's payload.
+	 * 
+	 * @param block The byte array containing the data to append
+	 */
+	public synchronized void appendPayload(byte[] block) {
+	
+		if (block != null) {
+			if (payload != null) {
+		
+				byte[] oldPayload = payload;
+				payload = new byte[oldPayload.length + block.length];
+				System.arraycopy(oldPayload, 0,	payload, 0, 
+					oldPayload.length);
+				System.arraycopy(block, 0, payload, oldPayload.length, 
+					block.length);
+				
+			} else {
+				
+				payload = block.clone();
+			}
+			
+			// wake up threads waiting in readPayload()
+			notifyAll();
+			
+			// call notification method
+			payloadAppended(block);
+		}		
+	}
+	
+	/*
+	 * Reads the byte at the given position from the payload and blocks
+	 * if the data is not yet available.
+	 * 
+	 * @pos The position of the byte to read
+	 * @return The byte at the given position, or -1 if it does not exist
+	 */
+	public synchronized int readPayload(int pos) {
+		
+		// check if there is data to read
+		while (pos >= payload.length) {
+			
+			// all payload was read
+			if (complete) {
+				return -1;
+			} else try {
+				// wait until more data is appended
+				wait();
+			} catch (InterruptedException e) {
+				// TODO Think more about this
+				return -1;
+			}
+		}
+		return payload[pos];		
+	}
+	
+	public int payloadSize() {
+		return payload != null ? payload.length : 0;
+	}
+	
+	/*
+	 * Checks whether the message is complete, i.e. its payload
+	 * was completely received.
+	 * 
+	 * @return True iff the message is complete
+	 */
+	public boolean isComplete() {
+		return complete;
+	}
+	
+	/*
+	 * Sets the complete flag of this message.
+	 * 
+	 * @param complete The value of the complete flag
+	 */
+	void setComplete(boolean complete) {
+		this.complete = complete;
+		if (complete) {
+			completed();
+		}
+	}
+	
+	/*
+	 * Notification method that is called when the message's complete flag
+	 * changed to true.
+	 * 
+	 * Subclasses may override this method to add custom handling code.
+	 */
+	protected void completed() {
+		// do nothing
+	}
+	
+	/*
+	 * Notification method that is called whenever payload was appended
+	 * using the appendPayload() method.
+	 * 
+	 * Subclasses may override this method to add custom handling code.
+	 * 
+	 * @param block A byte array containing the data that was appended
+	 */
+	protected void payloadAppended(byte[] block) {
+		// do nothing
+	}
+	
+	/*
 	 * This function returns the buddy of this CoAP message
 	 * Two messages are buddies iif they have the same message ID
 	 * 
@@ -575,7 +776,7 @@ public class Message {
 	/*
 	 * TODO: description
 	 */
-	public messageType getTypeByID(int id) {
+	public static messageType getTypeByID(int id) {
 		switch (id) {
 			case 0:
 				return messageType.Confirmable;
@@ -639,20 +840,72 @@ public class Message {
 			case Reset           : typeStr = "RST"; break;
 			default              : typeStr = "???"; break;
 		}
+		String payloadStr = payload != null ? new String(payload) : null;
 		return String.format("%s: [%s] %s '%s'(%d)",
 			key(), typeStr, CodeRegistry.toString(code), 
-			new String(payload), payload.length);
+			payloadStr, payloadSize());
+	}
+	
+	public void log(PrintStream out) {
+		
+		out.println("==[COAP MESSAGE]======================================");
+		String typeStr = "???";
+		if (type != null) switch (type) {
+			case Confirmable     : typeStr = "CON"; break;
+			case Non_Confirmable : typeStr = "NON"; break;
+			case Acknowledgement : typeStr = "ACK"; break;
+			case Reset           : typeStr = "RST"; break;
+			default              : typeStr = "NULL"; break;
+		}
+		
+		List<Option> options = getOptionList();
+		
+		out.printf("URI    : %s\n", uri != null ? uri.toString() : "NULL");
+		out.printf("ID     : %d\n", messageID);
+		out.printf("Type   : %s\n", typeStr);
+		out.printf("Code   : %s\n", CodeRegistry.toString(code));
+		out.printf("Options: %d\n", options.size());
+		for (Option opt : options) {
+			out.printf("  * %s (%d Bytes)\n", 
+				OptionNumberRegistry.toString(opt.getOptionNumber()),
+				opt.getLength()
+			);
+		}
+		out.printf("Payload: %d Bytes\n", payloadSize());
+		out.println("------------------------------------------------------");
+		if (payload != null) out.println(new String(payload));
+		out.println("======================================================");
+		
+	}
+	
+	public void log() {
+		log(System.out);
 	}
 	
 	/*
 	 * Returns a string that is assumed to uniquely identify a message
 	 * 
+	 * Note that for incoming messages, the message ID is not sufficient
+	 * as different remote endpoints may use the same message ID.
+	 * Therefore, the message key includes the identifier of the sender
+	 * next to the message id. 
+	 * 
 	 * @return A string identifying the message
 	 */
 	public String key() {
-		return String.format("%s#%d", 
-			uri != null ? uri.getAuthority() : "", 
+		InetAddress address = null;
+		try {
+			address = getAddress();
+		} catch (UnknownHostException e) {
+		}
+		return String.format("%s:%d#%d", 
+			address != null ? address.getHostAddress() : "NULL",
+			uri != null ? uri.getPort() : -1,
 			messageID);
+	}
+	
+	public InetAddress getAddress() throws UnknownHostException {
+		return InetAddress.getByName(uri != null ? uri.getHost() : null);
 	}
 	
 	// Attributes //////////////////////////////////////////////////////////////
@@ -662,6 +915,9 @@ public class Message {
 	
 	//The message's payload
 	private byte[] payload;
+	
+	// indicates whether the message's payload is complete
+	private boolean complete;
 	
 	/*
 	 * The message's version. This must be set to 1. Other numbers are reserved
@@ -689,7 +945,7 @@ public class Message {
 	private Message buddy;
 	
 	//The message's options
-	private Map<Integer, List<Option>> options
+	private Map<Integer, List<Option>> optionMap
 		= new TreeMap<Integer, List<Option>>();
 	
 

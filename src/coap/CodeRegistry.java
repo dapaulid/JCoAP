@@ -49,6 +49,24 @@ public class CodeRegistry {
 	public static final int RESP_GATEWAY_TIMEOUT                  = 164;
 	public static final int RESP_PROXYING_NOT_SUPPORTED           = 165;
 	
+	// Deprecated (Draft 3)
+	public static final int V3_RESP_CONTINUE                      = 40;
+	public static final int V3_RESP_OK                            = 80;
+	public static final int V3_RESP_CREATED                       = 81;
+	public static final int V3_RESP_NOT_MODIFIED                  = 124;
+	public static final int V3_RESP_BAD_REQUEST                   = 160;
+	public static final int V3_RESP_NOT_FOUND                     = 164;
+	public static final int V3_RESP_METHOD_NOT_ALLOWED            = 165;
+	public static final int V3_RESP_UNSUPPORTED_MEDIA_TYPE        = 175;
+	public static final int V3_RESP_INTERNAL_SERVER_ERROR         = 200;
+	public static final int V3_RESP_BAD_GATEWAY                   = 202;
+	public static final int V3_RESP_SERVICE_UNAVAILABLE           = 203;
+	public static final int V3_RESP_GATEWAY_TIMEOUT               = 204;
+	public static final int V3_RESP_TOKEN_OPTION_REQUIRED         = 240;
+	public static final int V3_RESP_URI_AUTHORITY_OPTION_REQUIRED = 241;
+	public static final int V3_RESP_CRITICAL_OPTION_NOT_SUPPORTED = 242;
+	
+	
 	// Static Functions ////////////////////////////////////////////////////////
 	
 	/*
@@ -68,7 +86,11 @@ public class CodeRegistry {
 	 * @return True iff the code indicates a response
 	 */
 	public static boolean isResponse(int code) {
-		return (code >= 64) && (code <= 191);
+		
+		//return (code >= 64) && (code <= 191);
+		
+		// use extended range for backward compatibility with draft 3
+		return (code >= 40) && (code <= 242);
 	}
 	
 	/*
@@ -91,6 +113,29 @@ public class CodeRegistry {
 		return (code >> 5) & 0x7;
 	}
 
+	public static Class<? extends Message> getMessageClass(int code) {
+		if (isRequest(code)) {
+			switch (code) {
+			case METHOD_GET: 
+				return GETRequest.class;
+			case METHOD_POST: 
+				return POSTRequest.class;
+			case METHOD_PUT: 
+				return PUTRequest.class;
+			case METHOD_DELETE: 
+				return DELETERequest.class;
+			default: 
+				return Request.class;
+			}
+		} else if (isResponse(code)) {
+			return Response.class;
+		} else if (isValid(code)) {
+			return Message.class;
+		} else {
+			return null;
+		}
+	}
+	
 	/*
 	 * Returns a string representation of the code
 	 * 
@@ -150,6 +195,38 @@ public class CodeRegistry {
 			return "5.04 Gateway Timeout";
 		case RESP_PROXYING_NOT_SUPPORTED: 
 			return "5.05 Proxying Not Supported";
+			
+		// Deprecated (Draft 3)
+		case V3_RESP_CONTINUE:
+			return "100 Continue";
+		case V3_RESP_OK:
+			return "200 OK";
+		case V3_RESP_CREATED:
+			return "201 Created";
+		case V3_RESP_NOT_MODIFIED:
+			return "304 Not Modified";
+		//case V3_RESP_BAD_REQUEST:
+		//	return "400 Bad Request";
+		//case V3_RESP_NOT_FOUND:
+		//	return "404 Not Found";
+		//case V3_RESP_METHOD_NOT_ALLOWED:
+		//	return "405 Method Not Allowed";
+		case V3_RESP_UNSUPPORTED_MEDIA_TYPE:
+			return "415 Unsupported Media Type";
+		case V3_RESP_INTERNAL_SERVER_ERROR:
+			return "500 Internal Server Error";
+		case V3_RESP_BAD_GATEWAY:
+			return "502 Bad Gateway";
+		case V3_RESP_SERVICE_UNAVAILABLE:
+			return "503 Service Unavailable";
+		case V3_RESP_GATEWAY_TIMEOUT:
+			return "504 Gateway Timeout";
+		case V3_RESP_TOKEN_OPTION_REQUIRED:
+			return "Token Option required by server";
+		case V3_RESP_URI_AUTHORITY_OPTION_REQUIRED:
+			return "Uri-Authority Option required by server";
+		case V3_RESP_CRITICAL_OPTION_NOT_SUPPORTED:
+			return "Critical Option not supported";
 		}
 		
 		if (isValid(code)) {

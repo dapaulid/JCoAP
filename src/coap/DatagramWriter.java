@@ -70,6 +70,9 @@ public class DatagramWriter {
 	 */
 	public void writeBytes(byte[] bytes) {
 		
+		// check if anything to do at all
+		if (bytes == null) return;
+		
 		// are there bits left to write in buffer?
 		if (currentBitIndex < Byte.SIZE-1) {
 			

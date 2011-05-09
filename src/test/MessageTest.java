@@ -1,15 +1,8 @@
 package test;
 
 import static org.junit.Assert.*;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-
 import org.junit.Test;
-
 import coap.CodeRegistry;
-import coap.DatagramReader;
-import coap.DatagramWriter;
 import coap.Message;
 import coap.Message.messageType;
 import coap.Option;
@@ -23,9 +16,6 @@ public class MessageTest {
 		
 		Message msg = new Message ();
 
-		//Does not get set when converting Bytes->msg
-		msg.setURI(null);
-		
 		msg.setCode(CodeRegistry.METHOD_GET);
 		msg.setType(messageType.Confirmable);
 		msg.setID(12345);
@@ -34,7 +24,7 @@ public class MessageTest {
 		System.out.println(msg.toString());		
 		
 		byte[] data = msg.toByteArray();
-		Message convMsg = new Message (data);
+		Message convMsg = Message.fromByteArray(data);
 		
 		assertEquals(msg.getCode(), convMsg.getCode());
 		assertEquals(msg.getType(), convMsg.getType());
@@ -47,9 +37,6 @@ public class MessageTest {
 	public void testOptionMessage() {
 		Message msg = new Message ();
 		
-		//Does not get set when converting Bytes->msg
-		msg.setURI(null);
-		
 		msg.setCode(CodeRegistry.METHOD_GET);
 		msg.setType(messageType.Confirmable);
 		msg.setID(12345);
@@ -59,7 +46,7 @@ public class MessageTest {
 		
 		
 		byte[] data = msg.toByteArray();
-		Message convMsg = new Message (data);
+		Message convMsg = Message.fromByteArray(data);
 		
 		assertEquals(msg.getCode(), convMsg.getCode());
 		assertEquals(msg.getType(), convMsg.getType());
@@ -71,9 +58,6 @@ public class MessageTest {
 	@Test
 	public void testExtendedOptionMessage() {
 		Message msg = new Message ();
-		
-		//Does not get set when converting Bytes->msg
-		msg.setURI(null);
 		
 		msg.setCode(CodeRegistry.METHOD_GET);
 		msg.setType(messageType.Confirmable);
@@ -100,7 +84,7 @@ public class MessageTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		Message convMsg = new Message (data);
+		Message convMsg = Message.fromByteArray(data);
 		
 		assertEquals(msg.getCode(), convMsg.getCode());
 		assertEquals(msg.getType(), convMsg.getType());
