@@ -186,7 +186,7 @@ public class SampleServer extends LocalEndpoint {
 			// we know this stuff may take longer...
 			// promise the client that this request will be acted upon
 			// by sending an Acknowledgement
-			//request.accept();
+			request.accept();
 			
 			// do the time-consuming computation
 			try {
@@ -198,7 +198,8 @@ public class SampleServer extends LocalEndpoint {
 			Response response = new Response(CodeRegistry.RESP_VALID);
 			
 			// set payload
-			response.setPayload("Finally! We did it!");
+			response.setPayload("This message was sent by a separate response.\n" +
+				"Your client will need to acknowledge it, otherwise it will be retransmitted.");
 			
 			// complete the request
 			request.respond(response);

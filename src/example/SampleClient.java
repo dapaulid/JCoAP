@@ -1,5 +1,25 @@
 package example;
 
+/*
+ * This class implements a simple CoAP client for testing purposes.
+ * 
+ * Usage: java -jar SampleClient.jar [-l] METHOD URI [PAYLOAD]
+ *   METHOD  : {GET, POST, PUT, DELETE, DISCOVER}
+ *   URI     : The URI to the remote endpoint or resource
+ *   PAYLOAD : The data to send with the request
+ * Options:
+ *   -l      : Wait for multiple responses
+ * 
+ * Examples:
+ *   SampleClient DISCOVER coap://localhost
+ *   SampleClient POST coap://someServer.org:61616 my data
+ * 
+ *   
+ * @author Dominique Im Obersteg & Daniel Pauli
+ * @version 0.1
+ * 
+ */
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -23,7 +43,7 @@ public class SampleClient {
 		String method  = null;
 		String uri     = null;
 		String payload = null;
-		boolean loop   = true;
+		boolean loop   = false;
 
 		// input parameters
 		
@@ -88,7 +108,6 @@ public class SampleClient {
 		request.enableResponseQueue(true);
 		try {
 			request.execute();
-			System.out.println("Executed: " + request.key());
 		} catch (IOException e) {
 			System.err.printf("Failed to execute request: %s\n", e.getMessage());
 			return;
@@ -102,6 +121,14 @@ public class SampleClient {
 			Response response = null;
 			try {
 				response = request.receiveResponse();
+				
+				// check for indirect response
+				if (response != null && response.isEmptyACK()) {
+					System.out.println("Request acknowledged, waiting for separate response...");
+					
+					response = request.receiveResponse();
+				}
+				
 			} catch (InterruptedException e) {
 				System.err.printf("Failed to receive response: %s\n", e.getMessage());
 				return;
@@ -112,13 +139,13 @@ public class SampleClient {
 			if (response != null) {
 				
 				response.log();
-				System.out.printf("Round Trip Time: %d ms\n\n", response.getRTT());
+				System.out.printf("Round Trip Time: %d ms\n", response.getRTT());
 				
 				if (response.hasFormat(MediaTypeRegistry.LINK_FORMAT)) {
 					String linkFormat = response.getPayloadString();
 					Resource root = RemoteResource.newRoot(linkFormat);
 					if (root != null) {
-						System.out.println("Discovered resources:");
+						System.out.println("\nDiscovered resources:");
 						root.log();
 					} else {
 						System.err.printf("Failed to parse link format\n");
@@ -140,11 +167,14 @@ public class SampleClient {
 	}
 	
 	public static void printInfo() {
-		System.out.println("JCoAP Sample Client");
-		System.out.println("Usage: METHOD URI [PAYLOAD]");
-		System.out.println("  METHOD : {GET, POST, PUT, DELETE, DISCOVER}");
-		System.out.println("  URI    : The URI to the remote endpoint or resource");
-		System.out.println("  PAYLOAD: The data to send with the request");
+		System.out.println("Californium Java CoAP Sample Client");
+		System.out.println();
+		System.out.println("Usage: SampleClient [-l] METHOD URI [PAYLOAD]");
+		System.out.println("  METHOD  : {GET, POST, PUT, DELETE, DISCOVER}");
+		System.out.println("  URI     : The URI to the remote endpoint or resource");
+		System.out.println("  PAYLOAD : The data to send with the request");
+		System.out.println("Options:");
+		System.out.println("  -l      : Wait for multiple responses");
 		System.out.println();
 		System.out.println("Examples:");
 		System.out.println("  SampleClient DISCOVER coap://localhost");

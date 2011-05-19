@@ -42,7 +42,7 @@ public class MessageLayer extends UpperLayer {
 	
 	// maximal number of retransmissions before the attempt
 	// to transmit a message is canceled
-	private static final int MAX_RETRANSMIT = 1; //4;
+	private static final int MAX_RETRANSMIT = 4;
 
 	// Implementation-specific /////////////////////////////////////////////////
 	

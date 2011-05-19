@@ -57,5 +57,14 @@ public class Response extends Message {
 		handler.handleResponse(this);
 	}
 	
+	public boolean isPiggyBacked() {
+		return isAcknowledgement() && getCode() != CodeRegistry.EMPTY_MESSAGE;
+	}
+
+	public boolean isEmptyACK() {
+		return isAcknowledgement() && getCode() == CodeRegistry.EMPTY_MESSAGE;
+	}
+	
+	
 	private Request request;
 }

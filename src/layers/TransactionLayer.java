@@ -43,23 +43,25 @@ public class TransactionLayer extends UpperLayer {
 	@Override
 	protected void doReceiveMessage(Message msg) {
 
+		// retrieve token option
+		Option tokenOpt = msg.getFirstOption(OptionNumberRegistry.TOKEN);
+		
 		if (msg instanceof Response) {
+
 			Response response = (Response) msg;
 			
 			Request request = null;
 			
-			// retrieve token option
-			Option tokenOpt = response.getFirstOption(OptionNumberRegistry.TOKEN);
 			if (tokenOpt != null) {
 				
 				// retrieve request corresponding to token
 				int token = tokenOpt.getIntValue();
 				request = tokenMap.get(token);
 				
-				if (request == null) {
-					System.out.printf("[%s] WARNING: Unexpected response, Token=%1$#X\n",
+				/*if (request == null) {
+					System.out.printf("[%s] WARNING: Unexpected response, Token=0x%x\n",
 						getClass().getName(), token);
-				}
+				}*/
 			} else {
 				// no token option present (blame server)
 				
@@ -81,7 +83,10 @@ public class TransactionLayer extends UpperLayer {
 				try {
 					// reply with ACK if response matched to request,
 					// otherwise reply with RST
-					sendMessageOverLowerLayer(response.newReply(request != null));
+					
+					Message reply = response.newReply(request != null);
+
+					sendMessageOverLowerLayer(reply);
 
 				} catch (IOException e) {
 					System.out.printf("[%s] ERROR: Failed to reply to confirmable response:\n",
@@ -90,19 +95,24 @@ public class TransactionLayer extends UpperLayer {
 				}
 			}
 
-			// check if matching successful
 			if (request != null) {
 				
 				// attach request to response
 				response.setRequest(request);
-			} else {
+			}/* else {
 				
 				// log unsuccessful matching
 				System.out.printf("[%s] ERROR: Failed to match response to request:\n",
 					getClass().getName());
 				response.log();
-			}
+			}*/
 			
+		} else if (msg instanceof Request) {
+			
+			// incoming request: 
+			if (tokenOpt != null) {
+				tokenMap.put(tokenOpt.getIntValue(), (Request) msg);
+			}
 		}
 
 		deliverMessage(msg);
