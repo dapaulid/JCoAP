@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import coap.CodeRegistry;
 import coap.Message;
 
 /*
@@ -31,15 +32,17 @@ public class MessageLayer extends UpperLayer {
 
 	// Constants ///////////////////////////////////////////////////////////////
 	
-	// CoAP Protocol constants as defined in draft-ietf-core-coap-05, section 9
+	// CoAP Protocol constants as defined in draft-ietf-core-coap-06, section 9
 	
-	// initial timeout for confirmable messages, used by 
-	// the exponential backoff mechanism
+	// constants to calculate initial timeout for confirmable messages, 
+	//  used by the exponential backoff mechanism
 	private static final int RESPONSE_TIMEOUT = 2000; // [milliseconds]
+ 
+	private static final double RESPONSE_RANDOM_FACTOR = 1.5;
 	
 	// maximal number of retransmissions before the attempt
 	// to transmit a message is canceled
-	private static final int MAX_RETRANSMIT = 4;
+	private static final int MAX_RETRANSMIT = 1; //4;
 
 	// Implementation-specific /////////////////////////////////////////////////
 	
@@ -55,6 +58,7 @@ public class MessageLayer extends UpperLayer {
 		Message msg;
 		RetransmitTask retransmitTask;
 		int numRetransmit;
+		int timeout;
 	}
 	
 	/*
@@ -103,7 +107,9 @@ public class MessageLayer extends UpperLayer {
 	protected void doSendMessage(Message msg) throws IOException {
 		
 		// set message ID
-		msg.setID(nextMessageID());
+		if (msg.getID() < 0) {
+			msg.setID(nextMessageID());
+		}
 		
 		// check if message needs confirmation, i.e. a reply is expected
 		if (msg.isConfirmable()) {
@@ -126,7 +132,7 @@ public class MessageLayer extends UpperLayer {
 	
 	@Override
 	protected void doReceiveMessage(Message msg) {
-		
+
 		// check for duplicate
 		if (dupCache.containsKey(msg.key())) {
 		
@@ -144,15 +150,18 @@ public class MessageLayer extends UpperLayer {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					
-				} else {
-					// TODO handling of the case
-					// where reply is not in cache
+
+					// ignore duplicate
+					System.out.printf("[%s] Replied to duplicate Confirmable: %s",
+						getClass().getName(), msg.key());
 					return;
 				}
 				
 			} else {
-				// silently ignore messages of any other type
+
+				// ignore duplicate
+				System.out.printf("[%s] Duplicate dropped: %s\n",
+					getClass().getName(), msg.key());
 				return;
 			}
 			
@@ -179,8 +188,9 @@ public class MessageLayer extends UpperLayer {
 				
 			} else {
 				// ignore unexpected reply
-				System.out.printf("[%s] WARNING: Unexpected reply dropped: %s\n",
+				System.out.printf("[%s] Unexpected reply dropped: %s\n",
 					getClass().getName(), msg.key());
+				msg.log();
 				return;
 			}
 		}
@@ -212,6 +222,7 @@ public class MessageLayer extends UpperLayer {
 					getClass().getName(), e.getMessage());
 				
 				removeTransmission(ctx);
+				
 				return;
 			}
 
@@ -226,7 +237,8 @@ public class MessageLayer extends UpperLayer {
 			System.out.printf("[%s] Transmission of %s cancelled\n", 
 				getClass().getName(), ctx.msg.key());
 			
-			// TODO custom reply to notify upper layers?
+			// invoke event handler method
+			ctx.msg.timedOut();
 		}
 	}
 	
@@ -265,7 +277,6 @@ public class MessageLayer extends UpperLayer {
 	
 			// remove context from context table
 			txTable.remove(ctx.msg.getID());
-			
 		}
 	}
 	
@@ -279,12 +290,17 @@ public class MessageLayer extends UpperLayer {
 		// create new retransmission task
 		ctx.retransmitTask = new RetransmitTask(ctx);
 		
-		// calculate timeout by exponential backoff:
-		// timeout = RESPONSE_TIMEOUT * 2^numRetransmit
-		int timeout = RESPONSE_TIMEOUT << ctx.numRetransmit;
+		// calculate timeout using exponential backoff
+		if (ctx.timeout == 0) {
+			// use initial timeout
+			ctx.timeout = initialTimeout();
+		} else {
+			// double timeout
+			ctx.timeout *= 2;
+		}
 		
 		// schedule retransmission task
-		timer.schedule(ctx.retransmitTask, timeout);
+		timer.schedule(ctx.retransmitTask, ctx.timeout);
 	}
 	
 	/*
@@ -304,6 +320,27 @@ public class MessageLayer extends UpperLayer {
 		}
 		
 		return ID;
+	}
+	
+	/*
+	 * Calculates the initial timeout for outgoing Confirmable messages.
+	 * 
+	 * @Return The timeout in milliseconds
+	 */
+	private static int initialTimeout() {
+		return rnd(RESPONSE_TIMEOUT, (int)(RESPONSE_TIMEOUT * RESPONSE_RANDOM_FACTOR));
+	}
+	
+	/*
+	 * Returns a random number within a given range.
+	 * 
+	 * @param min The lower limit of the range
+	 * @param max The upper limit of the range, inclusive
+	 * @return A random number from the range [min, max]
+	 *
+	 */
+	private static int rnd(int min, int max) {
+		return min + (int) (Math.random() * (max - min + 1));
 	}
 	
 	// Attributes //////////////////////////////////////////////////////////////

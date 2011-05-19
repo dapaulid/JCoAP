@@ -1,10 +1,10 @@
 package test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import coap.RemoteResource;
 import coap.Resource;
 
 public class ResourceTest {
@@ -12,9 +12,12 @@ public class ResourceTest {
 	@Test
 	public void simpleTest () {
 		String input = "</sensors/temp>;ct=41;n=\"TemperatureC\"";
-		Resource res = Resource.fromLinkFormat(input);
+		Resource root = RemoteResource.newRoot(input);
 		
-		assertEquals("/sensors/temp",res.getResourceIdentifier());
+		Resource res = root.getResource("/sensors/temp");
+		assertNotNull(res);
+		
+		assertEquals("temp",res.getResourceIdentifier());
 		assertEquals(41,res.getContentTypeCode());
 		assertEquals("TemperatureC", res.getResourceName());
 	}
@@ -22,9 +25,12 @@ public class ResourceTest {
 	@Test
 	public void extendedTest () {
 		String input = "</myUri/something>;n=\"MyName\";d=\"/someRef/path\";ct=42;sz=10;obs";
-		Resource res = Resource.fromLinkFormat(input);
+		Resource root = RemoteResource.newRoot(input);
 		
-		assertEquals("/myUri/something",res.getResourceIdentifier());
+		Resource res = root.getResource("/myUri/something");
+		assertNotNull(res);
+		
+		assertEquals("something",res.getResourceIdentifier());
 		assertEquals("MyName", res.getResourceName());
 		assertEquals("/someRef/path", res.getInterfaceDescription());
 		assertEquals(42,res.getContentTypeCode());
@@ -35,8 +41,8 @@ public class ResourceTest {
 	
 	@Test
 	public void conversionTest () {
-		String ref = "</myUri/something>;n=\"MyName\";d=\"/someRef/path\";ct=42;sz=10;obs";
-		Resource res = Resource.fromLinkFormat(ref);
+		String ref = "</myUri>,</myUri/something>;n=\"MyName\";d=\"/someRef/path\";ct=42;sz=10;obs";
+		Resource res = RemoteResource.newRoot(ref);
 		String result = res.toLinkFormat();
 		assertEquals(ref, result);
 	}

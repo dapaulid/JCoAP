@@ -47,7 +47,7 @@ public class Request extends Message {
 	 */
 	public void execute() throws IOException {
 		
-		Communicator comm = defaultCommunicator();
+		Communicator comm = communicator != null ? communicator : defaultCommunicator();
 		if (comm != null) {
 			comm.sendMessage(this);
 		}
@@ -63,22 +63,70 @@ public class Request extends Message {
 		// assign response to this request
 		response.setRequest(this);
 		
-		// enqueue response
-		if (responseQueueEnabled()) {
-			if (!responseQueue.offer(response)) {
-				System.out.println("ERROR: Failed to enqueue response to request");
+		response.setURI(getURI());
+		response.setOption(getFirstOption(OptionNumberRegistry.TOKEN));
+
+		// set message type
+		if (response.getType() == null) {
+			if (responseCount == 0 && isConfirmable()) {
+				// use piggy-backed response
+				response.setType(messageType.Acknowledgement);
+				response.setID(getID());
+			} else {
+				// use separate response:
+				// Confirmable response to confirmable request, 
+				// Non-confirmable respinse to non-confirmable request
+				response.setType(getType());
 			}
+		}
+		
+		// check if response is of remote origin, i.e.
+		// was received by a communicator
+		if (communicator != null) try {
+			communicator.sendMessage(response);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		} else {
+			
+			// handle locally
+			response.handle();
 		}
 
-		// call handler method
-		handleResponse(response);		
-		
-		// notify response handlers
-		if (responseHandlers != null) {
-			for (ResponseHandler handler : responseHandlers) {
-				handler.handleResponse(response);
-			}
+		++responseCount;
+	}
+	
+	public void respond(int code, String message) {
+		Response response = new Response(code);
+		if (message != null) {
+			response.setPayload(message);
 		}
+		respond(response);
+	}
+
+	public void respond(int code) {
+		respond(code, null);
+	}
+	
+	public void accept() {
+		if (isConfirmable()) {
+			Response ack = new Response(CodeRegistry.EMPTY_MESSAGE);
+			ack.setType(messageType.Acknowledgement);
+			respond(ack);
+		}
+	}
+
+	public void reject() {
+		if (isConfirmable()) {
+			Response rst = new Response(CodeRegistry.EMPTY_MESSAGE);
+			rst.setType(messageType.Reset);
+			respond(rst);
+		}
+	}
+	
+	public void setCommunicator(Communicator communicator) {
+		this.communicator = communicator;
 	}
 	
 	/*
@@ -98,7 +146,18 @@ public class Request extends Message {
 			enableResponseQueue(true);
 		}
 		
-		return responseQueue.take();
+		// take response from queue
+		Response response = responseQueue.take();
+		
+		// return null if request timed out
+		return response != TIMEOUT_RESPONSE ? response : null; 
+	}
+	
+	@Override
+	public void timedOut() {
+		if (responseQueueEnabled()) {
+			responseQueue.offer(TIMEOUT_RESPONSE);
+		}
 	}
 
 	/*
@@ -168,7 +227,29 @@ public class Request extends Message {
 	 * @param response The response to handle
 	 */
 	protected void handleResponse(Response response) {
-		// Do nothing
+
+		// enqueue response
+		if (responseQueueEnabled()) {
+			if (!responseQueue.offer(response)) {
+				System.out.println("ERROR: Failed to enqueue response to request");
+			}
+		}
+	
+		// notify response handlers
+		if (responseHandlers != null) {
+			for (ResponseHandler handler : responseHandlers) {
+				handler.handleResponse(response);
+			}
+		}
+
+	}
+	
+	protected void responsePayloadAppended(Response response, byte[] block) {
+		// do nothing
+	}
+	
+	protected void responseCompleted(Response response) {
+		// do nothing
 	}
 	
 	/*
@@ -177,9 +258,14 @@ public class Request extends Message {
 	 * 
 	 * @param handler A handler for this request
 	 */
-	protected void dispatch(RequestHandler handler) {
+	public void dispatch(RequestHandler handler) {
 		System.out.printf("Unable to dispatch request with code '%s'", 
 			CodeRegistry.toString(getCode()));
+	}
+	
+	@Override
+	public void handleBy(MessageHandler handler) {
+		handler.handleRequest(this);
 	}
 	
 	// Class functions /////////////////////////////////////////////////////////
@@ -189,11 +275,16 @@ public class Request extends Message {
 	 * 
 	 * @return The default communicator
 	 */
-	public static Communicator defaultCommunicator() throws SocketException {
+	public static Communicator defaultCommunicator() {
 		
 		// lazy initialization
 		if (DEFAULT_COMM == null) {
-			DEFAULT_COMM = new Communicator();
+			try {
+				DEFAULT_COMM = new Communicator();
+			} catch (SocketException e) {
+				System.out.printf("[%s] Failed to create default communicator: %s\n", 
+					"JCoAP", e.getMessage());
+			}
 		}
 		return DEFAULT_COMM;
 	}
@@ -203,12 +294,20 @@ public class Request extends Message {
 	// the default communicator for request objects (lazy initialized)
 	private static Communicator DEFAULT_COMM;
 	
+	private static final Response TIMEOUT_RESPONSE
+		= new Response();
+	
 	// Attributes //////////////////////////////////////////////////////////////
 	
+	private Communicator communicator;
+	
 	// list of response handlers that are notified about incoming responses
-	List<ResponseHandler> responseHandlers;
+	private List<ResponseHandler> responseHandlers;
 	
 	// queue used to store responses that will be retrieved using 
 	// receiveResponse() 
-	BlockingQueue<Response> responseQueue;
+	private BlockingQueue<Response> responseQueue;
+	
+	// number of responses to this request
+	private int responseCount;
 }

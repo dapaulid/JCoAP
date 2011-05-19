@@ -62,18 +62,13 @@ public class MessageTest {
 		msg.setCode(CodeRegistry.METHOD_GET);
 		msg.setType(messageType.Confirmable);
 		msg.setID(12345);
-		//msg.setPayload("hallo".getBytes());
-		msg.setPayload("".getBytes());
-//		try {
-//			System.out.println("DEBUG: HALLO REF: " + getHexString("hallo".getBytes()));
-//		} catch (Exception e1) {
-//			// TODO Auto-generated catch block
-//			e1.printStackTrace();
-//		}
 		
 		//msg.addOption(new Option ("a".getBytes(), 1));
 		//msg.addOption(new Option ("c".getBytes(), 198));
-		msg.addOption(new Option ("c".getBytes(), 212));
+		msg.addOption(new Option ("c".getBytes(), 211));
+		
+		//will fail as limit of max 15 options would be exceeded
+		//msg.addOption(new Option ("c".getBytes(), 212));
 			
 		
 		

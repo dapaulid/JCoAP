@@ -1,10 +1,6 @@
 package example;
 
-import coap.GETRequest;
-import coap.PayloadInputStream;
-import coap.Request;
-import coap.Resources;
-import coap.Response;
+import coap.*;
 
 /*
  * This class implements a simple CoAP client for testing purposes.
@@ -30,7 +26,8 @@ public class TestClient {
 		Request request = new GETRequest();
 		
 		// perform request on the libcoap test server
-		request.setURI("coap://vs0.inf.ethz.ch:61616/.well-known/core");
+		//request.setURI("coap://vs0.inf.ethz.ch:61616/.well-known/core");
+		request.setURI("coap://localhost:61616./well-known/core");
 		
 		// enable response queue in order to perform 
 		// blocking receiveResponse() calls
@@ -56,11 +53,11 @@ public class TestClient {
 			String linkFormat = in.readString(linkFormatEncoding);
 			
 			// create resources by parsing the link format
-			Resources resources = Resources.fromLinkFormat(linkFormat);
+			Resource root = RemoteResource.newRoot(linkFormat);
 			
 			// output the resources
 			System.out.println("Resources discovered:");
-			resources.log();
+			root.log();
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

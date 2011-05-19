@@ -7,7 +7,7 @@ public class DELETERequest extends Request {
 	}
 	
 	@Override
-	protected void dispatch(RequestHandler handler) {
+	public void dispatch(RequestHandler handler) {
 		handler.performDELETE(this);
 	}	
 }

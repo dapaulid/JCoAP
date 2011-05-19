@@ -1,6 +1,7 @@
 package coap;
 
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -68,6 +69,8 @@ public class Message {
 	
 	public Message newReply(boolean ack) {
 
+		// TODO use this for Request.respond() or vice versa
+		
 		Message reply = new Message();
 		
 		// set message type
@@ -80,6 +83,9 @@ public class Message {
 		
 		// echo the message ID
 		reply.messageID = this.messageID;
+		
+		// echo token
+		reply.setOption(getFirstOption(OptionNumberRegistry.TOKEN));
 		
 		// set the receiver URI of the reply to the sender of this message
 		reply.uri = this.uri;
@@ -452,11 +458,20 @@ public class Message {
 			}
 			
 			// set Uri-Query options
-			String query = uri.getRawQuery(); // leave percent-encodings intact
+			String query = uri.getQuery();
 			if (query != null) {
+
+				// split the query into arguments
+				List<Option> uriQuery = new ArrayList<Option>();
+				for (String argument : query.split("&")) {
+					
+					// create a new Uri-Query option from the argument
+					uriQuery.add(new Option(argument, OptionNumberRegistry.URI_QUERY));
+				}
 				
-				setOption(new Option(query, OptionNumberRegistry.URI_QUERY));
+				setOptions(OptionNumberRegistry.URI_QUERY, uriQuery);
 			}
+			
 		}
 		
 		// finally, set new Uri
@@ -482,6 +497,25 @@ public class Message {
 	 */
 	public void setPayload(byte[] payload) {
 		this.payload = payload;
+	}
+	
+	public void setPayload(String payload, int mediaType) {
+		if (payload != null) {
+			try {
+				// set internal byte array
+				setPayload(payload.getBytes("UTF-8"));
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+				return;
+			}
+			
+			// set content type option
+			setOption(new Option(mediaType, OptionNumberRegistry.CONTENT_TYPE));
+		}
+	}
+	
+	public void setPayload(String payload) {
+		setPayload(payload, MediaTypeRegistry.PLAIN);
 	}
 	
 	/*
@@ -532,6 +566,15 @@ public class Message {
 	 */
 	public byte[] getPayload() {
 		return this.payload;
+	}
+	
+	public String getPayloadString() {
+		try {
+			return payload != null ? new String(payload, "UTF-8") : null;
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	/*
@@ -734,11 +777,29 @@ public class Message {
 	 * 
 	 * @param complete The value of the complete flag
 	 */
-	void setComplete(boolean complete) {
+	public void setComplete(boolean complete) {
 		this.complete = complete;
 		if (complete) {
 			completed();
 		}
+	}
+	
+	/*
+	 * Sets the timestamp associated with this message.
+	 * 
+	 * @param timestamp The new timestamp, in milliseconds
+	 */
+	public void setTimestamp(long timestamp) {
+		this.timestamp = timestamp;
+	}
+	
+	/*
+	 * Returns the timestamp associated with this message.
+	 * 
+	 * @return The timestamp of the message, in milliseconds
+	 */
+	public long getTimestamp() {
+		return timestamp;
 	}
 	
 	/*
@@ -748,6 +809,16 @@ public class Message {
 	 * Subclasses may override this method to add custom handling code.
 	 */
 	protected void completed() {
+		// do nothing
+	}
+	
+	/*
+	 * Notification method that is called when the transmission of this
+	 * message was cancelled due to timeout.
+	 * 
+	 *  Subclasses may override this method to add custom handling code.
+	 */
+	public void timedOut() {
 		// do nothing
 	}
 	
@@ -829,6 +900,11 @@ public class Message {
 		return isAcknowledgement() || isReset();
 	}
 	
+	public boolean hasFormat(int mediaType) {
+		Option opt = getFirstOption(OptionNumberRegistry.CONTENT_TYPE);
+		return opt != null ? opt.getIntValue() == mediaType : false;
+	}
+	
 	@Override
 	public String toString() {
 
@@ -873,7 +949,7 @@ public class Message {
 		}
 		out.printf("Payload: %d Bytes\n", payloadSize());
 		out.println("------------------------------------------------------");
-		if (payload != null) out.println(new String(payload));
+		if (payloadSize() > 0) out.println(getPayloadString());
 		out.println("======================================================");
 		
 	}
@@ -908,6 +984,15 @@ public class Message {
 		return InetAddress.getByName(uri != null ? uri.getHost() : null);
 	}
 	
+	/*
+	 * This method is overridden by subclasses according to the Visitor Pattern
+	 *
+	 * @param handler A handler for this message
+	 */
+	public void handleBy(MessageHandler handler) {
+		// do nothing
+	}
+	
 	// Attributes //////////////////////////////////////////////////////////////
 	
 	//The message's URI
@@ -938,7 +1023,7 @@ public class Message {
 	private int code;
 	
 	//The message's ID
-	private int messageID;
+	private int messageID = -1;
 	
 	// The message's buddy. Two messages are buddies iif
 	// they have the same message ID
@@ -948,7 +1033,9 @@ public class Message {
 	private Map<Integer, List<Option>> optionMap
 		= new TreeMap<Integer, List<Option>>();
 	
-
+	//A time stamp associated with the message
+	private long timestamp;
+	
 	// Declarations ////////////////////////////////////////////////////////////
 	/*
 	 * The message's type which can have the following values:

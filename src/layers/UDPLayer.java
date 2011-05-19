@@ -28,13 +28,10 @@ public class UDPLayer extends Layer {
 
 	// CoAP specific constants /////////////////////////////////////////////////
 	
-	// default CoAP UDP port
-	//private static final int DEFAULT_PORT      = 61616;
-	
 	// default CoAP port as defined in draft-ietf-core-coap-05, section 7.1:
 	// MUST be supported by a server for resource discovery and 
 	// SHOULD be supported for providing access to other resources. 
-	public static final int IANA_TBD_PORT      = 5683;
+	public static final int DEFAULT_PORT      = 5683;
 	
 	// CoAP URI scheme name as defined in draft-ietf-core-coap-05, section 11.4:
 	public static final String URI_SCHEME_NAME = "coap";
@@ -67,6 +64,7 @@ public class UDPLayer extends Layer {
 					e.printStackTrace();
 					continue;
 				}
+			
 				datagramReceived(datagram);
 			}
 		}
@@ -150,7 +148,7 @@ public class UDPLayer extends Layer {
 		
 		// retrieve remote port
 		int port = uri != null ? uri.getPort() : -1;
-		if (port < 0) port = IANA_TBD_PORT;
+		if (port < 0) port = DEFAULT_PORT;
 
 		// retrieve payload
 		byte[] payload = msg.toByteArray();
@@ -159,9 +157,11 @@ public class UDPLayer extends Layer {
 		DatagramPacket datagram = 
 			new DatagramPacket(payload, payload.length, address, port);
 		
+		// remember when this message was sent
+		msg.setTimestamp(System.currentTimeMillis());
+		
 		// send it over the UDP socket
 		socket.send(datagram);
-		
 	}
 
 	@Override
@@ -176,6 +176,9 @@ public class UDPLayer extends Layer {
 	
 	private void datagramReceived(DatagramPacket datagram) {
 		
+		// get current time
+		long timestamp = System.currentTimeMillis();
+		
 		// extract message data from datagram
 		byte[] data = Arrays.copyOfRange(datagram.getData(), 
 				datagram.getOffset(), datagram.getLength()); 
@@ -183,11 +186,16 @@ public class UDPLayer extends Layer {
 		// create new message from the received data
 		Message msg = Message.fromByteArray(data);
 		
+		// remember when this message was received
+		msg.setTimestamp(timestamp);
+		
 		// assemble URI components from datagram
 		
 		String 	scheme 		= URI_SCHEME_NAME;
 		String 	userInfo 	= null;
-		String 	host 		= datagram.getAddress().getHostName();
+		// TODO getHostName() leads to replies always in IPv4...
+		//String 	host 		= datagram.getAddress().getHostName();
+		String 	host 		= datagram.getAddress().getHostAddress();
 		int 	port 		= datagram.getPort();
 		String 	path 		= null;
 		String 	query 		= null;
@@ -195,10 +203,13 @@ public class UDPLayer extends Layer {
 		
 		// set message URI to sender URI
 		try {
+			
 			msg.setURI(new URI(scheme, userInfo, host, port, path, query, fragment));
+			
 		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+			System.out.printf("[%s] Failed to build URI for incoming message: %s\n",
+				getClass().getName(), e.getMessage());
 		}
 		
 		// call receive handler

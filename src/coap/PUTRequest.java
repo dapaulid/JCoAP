@@ -7,7 +7,7 @@ public class PUTRequest extends Request {
 	}
 	
 	@Override
-	protected void dispatch(RequestHandler handler) {
+	public void dispatch(RequestHandler handler) {
 		handler.performPUT(this);
 	}	
 }

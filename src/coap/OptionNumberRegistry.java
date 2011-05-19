@@ -26,8 +26,10 @@ public class OptionNumberRegistry {
 	public static final int URI_PATH            = 9;
 	public static final int OBSERVE             = 10; // draft-ietf-core-observe-02
 	public static final int TOKEN               = 11;
-	public static final int BLOCK               = 13; // draft-ietf-core-block-02
+	public static final int BLOCK               = 13; // deprecated, draft-ietf-core-block-02
 	public static final int URI_QUERY           = 15;
+	public static final int BLOCK2              = 17; // draft-ietf-core-block-03
+	public static final int BLOCK1              = 19; // draft-ietf-core-block-03
 	
 	public static final int FENCEPOST_DIVISOR    = 14;
 	
@@ -121,6 +123,10 @@ public class OptionNumberRegistry {
 			return "Block";
 		case URI_QUERY:
 			return "Uri-Query";
+		case BLOCK2:
+			return "Block2";
+		case BLOCK1:
+			return "Block1";
 		}
 		return String.format("Unknown option [number %d]", optionNumber);
 	}

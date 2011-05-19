@@ -7,7 +7,7 @@ public class POSTRequest extends Request {
 	}
 	
 	@Override
-	protected void dispatch(RequestHandler handler) {
+	public void dispatch(RequestHandler handler) {
 		handler.performPOST(this);
 	}	
 }

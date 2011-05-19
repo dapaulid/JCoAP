@@ -27,7 +27,9 @@ public class TransactionLayer extends UpperLayer {
 			Request request = (Request) msg;
 			
 			// set token option
-			request.setOption(new Option(currentToken, OptionNumberRegistry.TOKEN));
+			if (request.getFirstOption(OptionNumberRegistry.TOKEN) == null) {
+				request.setOption(new Option(currentToken, OptionNumberRegistry.TOKEN));
+			}
 			
 			// associate token with request
 			tokenMap.put(currentToken, request);
@@ -40,7 +42,7 @@ public class TransactionLayer extends UpperLayer {
 	
 	@Override
 	protected void doReceiveMessage(Message msg) {
-		
+
 		if (msg instanceof Response) {
 			Response response = (Response) msg;
 			
@@ -91,8 +93,8 @@ public class TransactionLayer extends UpperLayer {
 			// check if matching successful
 			if (request != null) {
 				
-				// initiate custom response handling
-				request.respond(response);
+				// attach request to response
+				response.setRequest(request);
 			} else {
 				
 				// log unsuccessful matching
@@ -101,9 +103,9 @@ public class TransactionLayer extends UpperLayer {
 				response.log();
 			}
 			
-			deliverMessage(msg);
 		}
 
+		deliverMessage(msg);
 	}
 	
 	private Map<Integer, Request> tokenMap

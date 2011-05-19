@@ -48,8 +48,11 @@ public class CodeRegistry {
 	public static final int RESP_SERVICE_UNAVAILABLE              = 163;
 	public static final int RESP_GATEWAY_TIMEOUT                  = 164;
 	public static final int RESP_PROXYING_NOT_SUPPORTED           = 165;
+
+	// from draft-ietf-core-block-03
+	public static final int RESP_REQUEST_ENTITY_INCOMPLETE        = 136;
 	
-	// Deprecated (Draft 3)
+	// deprecated (draft 3)
 	public static final int V3_RESP_CONTINUE                      = 40;
 	public static final int V3_RESP_OK                            = 80;
 	public static final int V3_RESP_CREATED                       = 81;
@@ -129,6 +132,11 @@ public class CodeRegistry {
 			}
 		} else if (isResponse(code)) {
 			return Response.class;
+		} else if (code == EMPTY_MESSAGE) {
+			// empty messages are handled as responses
+			// in order to handle ACK/RST messages consistent
+			// with actual responses
+			return Response.class;
 		} else if (isValid(code)) {
 			return Message.class;
 		} else {
@@ -179,6 +187,8 @@ public class CodeRegistry {
 			return "4.04 Not Found";
 		case RESP_METHOD_NOT_ALLOWED: 
 			return "4.05 Method Not Allowed";
+		case RESP_REQUEST_ENTITY_INCOMPLETE:
+			return "4.08 Request Entity Incomplete";
 		case RESP_REQUEST_ENTITY_TOO_LARGE: 
 			return "4.13 Request Entity Too Large";
 		case RESP_UNSUPPORTED_MEDIA_TYPE: 

@@ -39,7 +39,7 @@ public class DatagramWriter {
 	 */
 	public void write(int data, int numBits) {
 		
-		if (data >= (1 << numBits)) {
+		if (numBits < 32 && data >= (1 << numBits)) {
 			System.out.printf("[%s] Warning: Truncating value %d to %d-bit integer\n",
 				getClass().getName(), data, numBits);
 		}

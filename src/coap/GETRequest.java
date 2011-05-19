@@ -7,7 +7,7 @@ public class GETRequest extends Request {
 	}
 	
 	@Override
-	protected void dispatch(RequestHandler handler) {
+	public void dispatch(RequestHandler handler) {
 		handler.performGET(this);
 	}	
 }
