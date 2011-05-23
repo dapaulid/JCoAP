@@ -8,7 +8,7 @@ import java.util.List;
 import coap.*;
 
 public class LocalEndpoint extends Endpoint {
-
+	
 	private class RootResource extends ReadOnlyResource {
 
 		public RootResource() {
@@ -20,8 +20,7 @@ public class LocalEndpoint extends Endpoint {
 		public void performGET(GETRequest request) {
 			
 			// create response
-			Response response = new Response(CodeRegistry.RESP_VALID);
-			
+			Response response = new Response(CodeRegistry.RESP_CONTENT);
 			ByteArrayOutputStream data = new ByteArrayOutputStream();
 			PrintStream out = new PrintStream(data);
 			
@@ -54,7 +53,7 @@ public class LocalEndpoint extends Endpoint {
 	}
 	
 	public LocalEndpoint() throws SocketException {
-		this(Communicator.DEFAULT_PORT);
+		this(DEFAULT_PORT);
 	}
 	
 	@Override
@@ -67,14 +66,30 @@ public class LocalEndpoint extends Endpoint {
 			String resourceIdentifier = getResourceIdentifier(request);
 			
 			// lookup resource
-			Resource resource = getResource(resourceIdentifier);
+			LocalResource resource = getResource(resourceIdentifier);
 			
 			// check if resource available
 			if (resource != null) {
 				
 				// invoke request handler of the resource
 				request.dispatch(resource);
-			} else if (request instanceof PUTRequest){
+				
+				// check if resource is to be observed
+				if (
+					request instanceof GETRequest && 
+					request.hasOption(OptionNumberRegistry.OBSERVE)
+				) {
+					
+					// establish new observation relationship
+					resource.addObserveRequest((GETRequest) request);
+
+				} else if (resource.isObserved(request.endpointID())){
+				
+					// terminate observation relationship on that resource
+					resource.removeObserveRequest(request.endpointID());
+				}
+				
+			} else if (request instanceof PUTRequest) {
 				
 				createByPUT((PUTRequest) request);
 			} else {
@@ -109,7 +124,7 @@ public class LocalEndpoint extends Endpoint {
 		}
 	}
 	
-	public void addResource(Resource resource) {
+	public void addResource(LocalResource resource) {
 		if (rootResource != null) {
 			rootResource.addSubResource(resource);
 		}
@@ -121,9 +136,9 @@ public class LocalEndpoint extends Endpoint {
 		}
 	}
 	
-	public Resource getResource(String resourceIdentifier) {
+	public LocalResource getResource(String resourceIdentifier) {
 		if (rootResource != null) {
-			return rootResource.getResource(resourceIdentifier);
+			return (LocalResource)rootResource.getResource(resourceIdentifier);
 		} else {
 			return null;
 		}

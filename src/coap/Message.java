@@ -905,6 +905,10 @@ public class Message {
 		return opt != null ? opt.getIntValue() == mediaType : false;
 	}
 	
+	public boolean hasOption(int optionNumber) {
+		return getFirstOption(optionNumber) != null;
+	}
+	
 	@Override
 	public String toString() {
 
@@ -922,29 +926,31 @@ public class Message {
 			payloadStr, payloadSize());
 	}
 	
+	public String typeString() {
+		if (type != null) switch (type) {
+			case Confirmable     : return "CON";
+			case Non_Confirmable : return "NON";
+			case Acknowledgement : return "ACK";
+			case Reset           : return "RST";
+			default              : return "???";
+		}
+		return null;
+	}
+	
 	public void log(PrintStream out) {
 		
 		out.println("==[COAP MESSAGE]======================================");
-		String typeStr = "???";
-		if (type != null) switch (type) {
-			case Confirmable     : typeStr = "CON"; break;
-			case Non_Confirmable : typeStr = "NON"; break;
-			case Acknowledgement : typeStr = "ACK"; break;
-			case Reset           : typeStr = "RST"; break;
-			default              : typeStr = "NULL"; break;
-		}
 		
 		List<Option> options = getOptionList();
 		
 		out.printf("URI    : %s\n", uri != null ? uri.toString() : "NULL");
 		out.printf("ID     : %d\n", messageID);
-		out.printf("Type   : %s\n", typeStr);
+		out.printf("Type   : %s\n", typeString());
 		out.printf("Code   : %s\n", CodeRegistry.toString(code));
 		out.printf("Options: %d\n", options.size());
 		for (Option opt : options) {
-			out.printf("  * %s (%d Bytes)\n", 
-				OptionNumberRegistry.toString(opt.getOptionNumber()),
-				opt.getLength()
+			out.printf("  * %s: %s (%d Bytes)\n", 
+				opt.getName(), opt.getDisplayValue(), opt.getLength()
 			);
 		}
 		out.printf("Payload: %d Bytes\n", payloadSize());
@@ -958,6 +964,18 @@ public class Message {
 		log(System.out);
 	}
 	
+	public String endpointID() {
+		InetAddress address = null;
+		try {
+			address = getAddress();
+		} catch (UnknownHostException e) {
+		}
+		return String.format("%s:%d", 
+			address != null ? address.getHostAddress() : "NULL",
+			uri != null ? uri.getPort() : -1
+		);
+	}
+	
 	/*
 	 * Returns a string that is assumed to uniquely identify a message
 	 * 
@@ -969,15 +987,8 @@ public class Message {
 	 * @return A string identifying the message
 	 */
 	public String key() {
-		InetAddress address = null;
-		try {
-			address = getAddress();
-		} catch (UnknownHostException e) {
-		}
-		return String.format("%s:%d#%d", 
-			address != null ? address.getHostAddress() : "NULL",
-			uri != null ? uri.getPort() : -1,
-			messageID);
+		return String.format("%s|%s#%d", 
+			endpointID(), typeString(),	messageID);
 	}
 	
 	public InetAddress getAddress() throws UnknownHostException {

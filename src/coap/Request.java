@@ -53,6 +53,8 @@ public class Request extends Message {
 		}
 	}
 	
+	private static final long startTime = System.currentTimeMillis();
+	
 	/*
 	 * Places a new response to this request, e.g. to answer it
 	 * 
@@ -75,8 +77,23 @@ public class Request extends Message {
 			} else {
 				// use separate response:
 				// Confirmable response to confirmable request, 
-				// Non-confirmable respinse to non-confirmable request
+				// Non-confirmable response to non-confirmable request
 				response.setType(getType());
+			}
+		}
+		
+		// check observe option
+		
+		Option observeOpt = getFirstOption(OptionNumberRegistry.OBSERVE);
+		if (observeOpt != null && !response.hasOption(OptionNumberRegistry.OBSERVE)) {
+			
+			// 16-bit second counter
+			int secs = (int)((System.currentTimeMillis() - startTime) / 1000) & 0xFFFF;
+			
+			response.setOption(new Option(secs, OptionNumberRegistry.OBSERVE));
+			
+			if (response.isConfirmable()) {
+				response.setType(messageType.Non_Confirmable);
 			}
 		}
 		

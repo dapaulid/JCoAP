@@ -37,7 +37,7 @@ public class DiscoveryResource extends ReadOnlyResource {
 		// TODO filtering etc.
 		
 		// create response
-		Response response = new Response(CodeRegistry.RESP_VALID);
+		Response response = new Response(CodeRegistry.RESP_CONTENT);
 		
 		// return resources in link-format
 		response.setPayload(root.toLinkFormat(), getContentTypeCode());

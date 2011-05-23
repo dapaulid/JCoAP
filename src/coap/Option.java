@@ -164,6 +164,15 @@ public class Option {
 	public int getOptionNumber() {
 		return optionNr;
 	}
+	
+	/*
+	 * This method returns the name that corresponds to the option number.
+	 * 
+	 * @return The name of the option
+	 */
+	public String getName() {
+		return OptionNumberRegistry.toString(optionNr);
+	}
 
 	/*
 	 * This method returns the length of the option's data in the ByteBuffer
@@ -217,6 +226,77 @@ public class Option {
 		return value;
 	}
 	
+	private static String hex(byte[] data) {
+
+		final String digits = "0123456789ABCDEF";
+		
+		if (data != null) {
+			
+			StringBuilder builder = new StringBuilder(data.length * 3);
+			for (int i = 0; i < data.length; i++) {
+				builder.append(digits.charAt((data[i] >> 4) & 0xF));
+				builder.append(digits.charAt(data[i] & 0xF));
+				if (i < data.length-1) {
+					builder.append(' ');
+				}
+			}
+			return builder.toString();
+		} else {
+			return null;
+		}
+	}
+	
+	/*
+	 * Returns a human-readable string representation of the option's value
+	 * 
+	 * @Return The option value represented as a string
+	 */
+	public String getDisplayValue() {
+		switch (optionNr) {
+		case OptionNumberRegistry.CONTENT_TYPE:
+			return MediaTypeRegistry.toString(getIntValue());
+		case OptionNumberRegistry.MAX_AGE:
+			return String.format("%d s", getIntValue());
+		case OptionNumberRegistry.PROXY_URI:
+			return getStringValue();
+		case OptionNumberRegistry.ETAG:
+			return hex(getRawValue());
+		case OptionNumberRegistry.URI_HOST:
+			return getStringValue();
+		case OptionNumberRegistry.LOCATION_PATH:
+			return getStringValue();
+		case OptionNumberRegistry.URI_PORT:
+			return String.valueOf(getIntValue());
+		case OptionNumberRegistry.LOCATION_QUERY:
+			return getStringValue();
+		case OptionNumberRegistry.URI_PATH:
+			return getStringValue();
+		case OptionNumberRegistry.OBSERVE:
+			return String.valueOf(getIntValue());
+		case OptionNumberRegistry.TOKEN:
+			return hex(getRawValue());
+		case OptionNumberRegistry.URI_QUERY:
+			return getStringValue();
+		case OptionNumberRegistry.BLOCK:
+		case OptionNumberRegistry.BLOCK1:
+		case OptionNumberRegistry.BLOCK2:
+
+			// TODO put this code elsewhere, as TransferLayer uses the same
+			int value = getIntValue();
+			
+			int szx = value      & 0x7;
+			int m   = value >> 3 & 0x1;
+			int num = value >> 4      ;
+			
+			int size = 1 << (szx + 4);
+			
+			return String.format("NUM: %d, SZX: %d (%d bytes), M: %d", 
+				num, szx, size, m);			
+			
+		default:
+			return hex(getRawValue());
+		}
+	}
 	
 	// Attributes //////////////////////////////////////////////////////////////
 	

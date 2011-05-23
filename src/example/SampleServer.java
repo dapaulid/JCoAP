@@ -48,7 +48,7 @@ public class SampleServer extends LocalEndpoint {
 		public void performGET(GETRequest request) {
 
 			// create response
-			Response response = new Response(CodeRegistry.RESP_VALID);
+			Response response = new Response(CodeRegistry.RESP_CONTENT);
 			
 			// set payload
 			response.setPayload("Hello World! Some umlauts: äöü");
@@ -72,7 +72,7 @@ public class SampleServer extends LocalEndpoint {
 			String text = request.getPayloadString();
 			
 			// complete the request
-			request.respond(CodeRegistry.RESP_VALID, text.toUpperCase());
+			request.respond(CodeRegistry.V3_RESP_OK, text.toUpperCase());
 		}
 	}
 
@@ -82,7 +82,7 @@ public class SampleServer extends LocalEndpoint {
 	 * to an existing resource.
 	 * 
 	 */	
-	private class StorageResource extends Resource {
+	private class StorageResource extends LocalResource {
 		
 		public StorageResource(String resourceIdentifier) {
 			super(resourceIdentifier);
@@ -98,7 +98,7 @@ public class SampleServer extends LocalEndpoint {
 		public void performGET(GETRequest request) {
 
 			// create response
-			Response response = new Response(CodeRegistry.RESP_VALID);
+			Response response = new Response(CodeRegistry.RESP_CONTENT);
 			
 			// set payload
 			response.setPayload(data);
@@ -160,8 +160,13 @@ public class SampleServer extends LocalEndpoint {
 		}
 		
 		private void storeData(Request request) {
+			
+			// set payload and content type
 			data = request.getPayload();
 			contentType = request.getFirstOption(OptionNumberRegistry.CONTENT_TYPE);
+			
+			// signal that resource state changed
+			changed();
 		}
 		
 		private byte[] data;
@@ -195,7 +200,7 @@ public class SampleServer extends LocalEndpoint {
 			}
 			
 			// create response
-			Response response = new Response(CodeRegistry.RESP_VALID);
+			Response response = new Response(CodeRegistry.RESP_CONTENT);
 			
 			// set payload
 			response.setPayload("This message was sent by a separate response.\n" +
@@ -223,7 +228,7 @@ public class SampleServer extends LocalEndpoint {
 	// Application entry point /////////////////////////////////////////////////
 	
 	public static void main(String[] args) {
-
+		
 		// create server
 		try {
 			

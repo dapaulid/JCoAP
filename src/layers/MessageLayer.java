@@ -152,7 +152,7 @@ public class MessageLayer extends UpperLayer {
 					}
 
 					// ignore duplicate
-					System.out.printf("[%s] Replied to duplicate Confirmable: %s",
+					System.out.printf("[%s] Replied to duplicate Confirmable: %s\n",
 						getClass().getName(), msg.key());
 					return;
 				}
