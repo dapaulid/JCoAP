@@ -47,7 +47,7 @@ public class LocalResource extends Resource {
 	}
 
 	public boolean isObserved(String endpointID) {
-		return observeRequests.containsKey(endpointID);
+		return observeRequests != null && observeRequests.containsKey(endpointID);
 	}
 	
 	protected void processObserveRequests() {

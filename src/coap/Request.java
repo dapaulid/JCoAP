@@ -68,12 +68,15 @@ public class Request extends Message {
 		response.setURI(getURI());
 		response.setOption(getFirstOption(OptionNumberRegistry.TOKEN));
 
+		if (responseCount == 0 && isConfirmable()) {
+			response.setID(getID());
+		}
+		
 		// set message type
 		if (response.getType() == null) {
 			if (responseCount == 0 && isConfirmable()) {
 				// use piggy-backed response
 				response.setType(messageType.Acknowledgement);
-				response.setID(getID());
 			} else {
 				// use separate response:
 				// Confirmable response to confirmable request, 
